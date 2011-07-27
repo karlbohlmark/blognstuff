@@ -1,0 +1,20 @@
+{
+  "name": "blognstuff",
+  "description": "Stuff n content",
+  "version": "0.1.0",
+  "keywords": [ "" ],
+  "maintainers": [
+    { "name": "Karl Böhlmark", "web": "http://bohlmark.se" }
+  ],
+  "contributors": [
+    { "name": "Karl Böhlmark", "web": "http://bohlmark.se" }
+  ],
+  "licenses": [ "MIT" ],
+  "repositories": {
+    "type": "git",
+    "url": "http://github.com//blognstuff.git"
+  },
+  "dependencies": {
+    "weld": '~0.2'  
+  }
+}

@@ -1,0 +1,224 @@
+<div id="tree-me"></div>
+
+<div id="test">
+    testar
+</div>
+
+<style>
+    ul, li{
+        list-style-type: none;
+    }
+
+    ul{
+        padding-left:0px;
+    }
+
+    ul ul{
+        padding-left:15px;
+    }
+
+    ul li{
+        padding-left : 10px;
+    }
+
+    li.minimized ul{
+        display:none;
+    }
+
+    .context-menu li:hover{
+        background-color:#ccf;
+    }
+
+    .node-editor{
+        display:none;
+    }
+
+    ul ul li{
+        padding: 0;
+        padding-left:30px;
+    }
+
+    .context-menu{
+        position:absolute;
+        background-color: #abc;
+    }
+
+</style>
+
+<script>
+    var nextId= function(){
+        var i=1;
+        return function(){
+            return (i++).toString();
+        }
+    }()
+
+    var tree = function(){
+        var init = function(node){
+            node.__proto__ = nodeProto;
+            node.id=nextId();
+            !!node.children && node.children.forEach(function(n){init(n)});
+        }
+        
+        var nodeProto = {
+            publish: function(topic, data){
+                if(!this.subscribers) this.subscribers = {};
+                var subscriptions = this.subscribers[topic];
+                subscriptions && subscriptions.map(
+                    function(s){
+                        s(data);
+                    }
+                );
+                this.parent && this.parent.publish(topic, data);
+            },
+            addChild : function(item){
+                if(!item.children) item.children = [];
+                if(!this.children) this.children = [];
+                init(item);
+                item.__proto__ = nodeProto;
+                this.children.push(item);
+                this.publish('node-added', item);
+            },
+            toString: function(){
+                var str = '<span class="node-label">' + this.label + '</span><input class="node-editor">' + '<ul>';
+                if(this.children)
+                    for(var i=0;i<this.children.length;i++){
+                        str += '<li id="' + this.children[i].id + '" class="node">' +
+                                this.children[i].toString() +
+                                '</li>';
+                    }
+                str += '</ul>'
+                return str;
+            }
+        }
+        var treeProto = {
+            toString : function(){
+                var str = 'tree: \n';
+                str += 'root: ';
+                str+= '<ul><li id="'+ nextId()  +'" class="node">' + this.root.toString() + '</li></ul>';
+                return str;
+            }
+        };
+
+        var findNodeById = function(n, id){
+            if(n.id==id) return n;
+
+            for(var i=0;i<n.children.length;i++){
+                var node = findNodeById(n.children[i], id);
+                if(!!node)
+                    return node;
+            }
+        }
+
+        var contextMenuProto = {
+            show: function(e){
+                console.log(e);
+                var menu = this;
+                menu.node = findNodeById(this.tree.root, e.target.id);
+                var m = document.querySelector('.context-menu');
+                !!m && m.parentNode.removeChild(m);
+                var domMenu = document.createElement('div');
+                domMenu.innerHTML = this.render(menu.node);
+                var m = domMenu.firstChild;
+                m.style.left = e.clientX;
+                m.style.top = e.clientY - 15;
+                
+
+                document.body.appendChild(m);
+                m.addEventListener('click', function(e){
+                    var item = menu.items.filter(function(i){return i.id==e.target.id})[0];
+                    item.action(menu.node);
+                })
+
+            },
+            hide: function(){
+                var m = document.querySelector('.context-menu');
+                m.parentNode.removeChild(m);
+            }
+        }
+
+        var tree = function(options){
+            var instance = {};
+            var contextMenu = {render: options.contextMenu};
+            contextMenu.__proto__ = contextMenuProto;
+            instance.contextMenu = contextMenu;
+            instance.contextMenu.tree = instance;
+            instance.options = options;
+            instance.root = options.root;
+            init(instance.root);
+
+            instance.root.__proto__ = nodeProto;
+            instance.types = options.types;
+            instance.__proto__ = treeProto;
+            return instance;
+        }
+        
+        tree.prototype = treeProto;
+        return tree;
+    }();
+
+    var t = tree({
+        root: {
+            type: 'start',
+            label: 'Start',
+            children: [
+                {
+                    type: 'content',
+                    label: 'About'
+                }
+            ]
+        },
+        contextMenu: function(){
+            var items = this.tree.types.map(function(type){
+               return {id:type.name, label: type.display, action: function(node){
+                   node.addChild({type : 'test', label: 'New ' + node.type})
+                   theTree.innerHTML = t.toString();
+               }};
+            });
+
+            this.items = items;
+            
+
+            var str = '<ul class="context-menu">' + items.map(function(item){
+                return '<li class="menu-item" id="' + item.id + '">' + item.label + '</li>';
+            }).join('') + '</ul>';
+            return str;
+        },
+        types: [
+            {name: 'start', display: 'Start', allowChildren:['content']},
+            {name: 'content', display: 'Content page', allowChildren: true},
+            {name: 'puff', display: 'Puff', allowChildren: false}
+        ]
+    });
+
+
+    var theTree = document.getElementById('tree-me');
+    theTree.innerHTML = t.toString();
+
+
+
+    //var nodes = Array.prototype.slice.call(document.querySelectorAll('node'));
+
+
+    theTree.addEventListener('click', function(e){
+        if(e.altKey && e.target.classList.contains('node-label')){
+            t.contextMenu.show(e);
+        }else{
+            if(e.target.classList.contains('node')){
+                if(e.target.classList.contains('minimized')){
+                    e.target.classList.remove('minimized')
+                }else{
+                    e.target.classList.add('minimized')
+                }
+
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function(e){
+        if(e.keyCode==27){
+            t.contextMenu.hide();
+        }
+    })
+
+</script>

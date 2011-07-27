@@ -1,0 +1,14 @@
+h1 Admin
+
+.content-tree
+  ul
+    li: a Start
+//
+  mixin news
+    ul
+      li Items
+        - each item in newsitems
+          li= item.title
+
+
+  mixin news
